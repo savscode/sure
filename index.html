@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SURE!</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <style>
+@font-face {
+  font-family: "CircularStd";
+  src: url("font/CircularStd-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BRLNSDB';
+  src: url('font/BRLNSDB.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --fade-in: 1600ms;
+  --fade-out: 700ms;
+  --brand-scale: 1.25;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(to top, #d299c2 0%, #fef9d7 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center; /* Centrerar text horisontellt */
+}
+
+.stage {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: transparent;
+  color: #ffffff;
+  transition: opacity var(--fade-out) ease;
+}
+
+.stage.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stack {
+  text-align: center;
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+/* Titel-wrapper för rubrik och texter */
+.title-wrapper {
+  margin-bottom: 20px; /* Lägger till mellanrum mellan rubrik och text */
+  width: 100%; /* Gör så att den tar upp hela bredden */
+  max-width: 500px; /* Maxbredd för större skärmar */
+  margin: 0 auto; /* Centrerar innehållet */
+}
+
+/* Rubrik */
+.title {
+  font-family: 'BRLNSDB', sans-serif;
+  font-size: 180px;
+  color: white;
+  margin-bottom: 10px;
+  font-weight: 700;
+  white-space: nowrap; /* Förhindrar radbrytning för rubriken */
+  text-overflow: ellipsis; /* Förhindrar att texten flyter ut över kanten */
+  overflow: hidden; /* Gör så att texten inte går utanför boxen */
+}
+
+/* Subtexter */
+.subtext {
+  font-family: "CircularStd", sans-serif;
+  font-size: 30px;
+  color: white;
+  margin-bottom: 30px;
+  word-wrap: break-word; /* Gör att långa ord bryts */
+  text-align: center; /* Centrerar texten */
+  line-height: 1.5; /* Lite mer mellanrum mellan raderna */
+  max-width: 100%; /* Säkerställer att texten hålls inom container */
+}
+
+/* Meter för tickern */
+.meter {
+  text-align: center;
+  font-size: 15rem;
+  font-family: 'BRLNSDB', sans-serif;
+}
+
+.meter span {
+  font-size: 15rem;
+  font-weight: bold;
+}
+
+.unity-wrap {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--fade-in) ease;
+  z-index: 1;
+}
+
+.unity-wrap.show {
+  opacity: 1;
+}
+
+.unity-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
+}
+
+/* Kommentarikonen - placera den i det övre högra hörnet */
+#comment-icon {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  font-size: 30px;
+  color: rgba(230, 57, 70, 0.75);
+  cursor: pointer;
+  z-index: 9999;
+}
+
+/* Overlay-styling */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(230, 57, 70, 0.75);
+  display: none;
+  z-index: 9998;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Kommentarsruta */
+.comment-box {
+  background: rgba(230, 57, 70, 0.75);
+  border-radius: 20px;
+  padding: 30px;
+  width: 90%;
+  max-width: 500px;
+  text-align: center;
+  font-family: "CircularStd", sans-serif;
+  height: 600px;
+}
+
+.comment-box h2 {
+  font-family: "CircularStd", sans-serif;
+  font-size: 32px;
+  color: white;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.comment-box textarea {
+  font-family: "CircularStd", sans-serif;
+  background: rgba(249, 70, 85, 0.75); /* Mörk bakgrund för bättre kontrast */
+  width: 100%;
+  height: 350px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  resize: none;
+  font-size: 14px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+/* Ändra färgen på placeholder-texten */
+.comment-box textarea::placeholder {
+  color: white;
+}
+
+/* Kommentarbutton */
+.comment-box button {
+  font-family: "CircularStd", sans-serif;
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: rgba(249, 70, 85, 0.75);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.comment-box button:hover {
+  background-color: #d32f2f;
+}
+
+/* Gör att texten bryts korrekt vid mobil */
+@media (max-width: 600px) {
+  .title-wrapper {
+    padding: 10px;
+    max-width: 90%; /* Gör boxen smalare på mobil */
+  }
+
+  .title {
+    font-size: 50px; /* Minska fontstorleken på mindre skärmar */
+  }
+
+  .subtext {
+    font-size: 18px; /* Minska fontstorleken på mobil */
+  }
+}
+  </style>
+</head>
+<body>
+
+  <!-- Förstasidan -->
+  <div class="stage" id="stage">
+    <div class="stack">
+      <!-- Rubrik och texter -->
+      <div class="title-wrapper">
+        <h1 class="title">SURE!</h1>
+        <p class="subtext">Välkommen till att utforska framtidens Polhemsgata.</p>
+        <p class="subtext">Ett ögonblick, vi laddat 2050...</p>
+      </div>
+      
+      <!-- Ticker (progress) -->
+      <div class="meter"><span id="pct">1</span>%</div>
+    </div>
+  </div>
+
+  <!-- Unity inbäddad -->
+  <div class="unity-wrap" id="unityWrap" aria-hidden="true">
+    <iframe id="unityFrame" class="unity-frame" src="" allow="autoplay; fullscreen; xr-spatial-tracking"></iframe>
+  </div>
+
+  <!-- Kommentarikon i övre högra hörnet -->
+  <i id="comment-icon" class="fa-solid fa-comment"></i>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay">
+    <!-- Kommentarsruta -->
+    <div class="comment-box">
+      <h2>Berätta hur du vill att Polhemsgatan ska upplevas och vad den ska innehålla år 2050!</h2>
+      <textarea id="comment-text" placeholder="Skriv din kommentar här..."></textarea>
+      <button id="submit-comment">Skicka</button>
+    </div>
+  </div>
+
+  <script>
+    const UNITY_URL = "/builds/sure-v1/index.html";
+    const stage = document.getElementById('stage');
+    const pctEl = document.getElementById('pct');
+    const wrap = document.getElementById('unityWrap');
+    const frame = document.getElementById('unityFrame');
+
+    frame.src = UNITY_URL;
+
+    const TICK_MS = 60;
+    const HOLD_CAP = 99;
+
+    let target = 1;
+    let shown = 1;
+    let ready = false;
+
+    window.addEventListener('message', (e) => {
+      if (e.source !== frame.contentWindow || !e.data) return;
+
+      if (e.data.type === 'unity-progress') {
+        const p = Math.round(Math.max(0, Math.min(1, Number(e.data.value))) * 100);
+        if (p > target) target = p;
+      }
+
+      if (e.data.type === 'unity-ready') {
+        ready = true;
+        target = 100;
+      }
+
+      if (e.data.type === 'unity-error') {
+        pctEl.textContent = '—';
+        console.error('Unity error:', e.data.message);
+        clearInterval(ticker);
+      }
+    });
+
+    const ticker = setInterval(() => {
+      const cap = ready ? 100 : Math.min(HOLD_CAP, target);
+
+      if (shown < cap) {
+        shown += 1;
+        pctEl.textContent = shown;
+      }
+
+      if (ready && shown >= 100) {
+        setTimeout(() => {
+          wrap.classList.add('show');
+          wrap.setAttribute('aria-hidden', 'false');
+          stage.classList.add('hide');
+        }, 300);
+        clearInterval(ticker);
+      }
+    }, TICK_MS);
+
+    setTimeout(() => {
+      if (target <= 1) {
+        const creep = setInterval(() => {
+          if (ready) return clearInterval(creep);
+          target = Math.min(HOLD_CAP, target + 1);
+          if (target >= 90) clearInterval(creep);
+        }, 250);
+      }
+    }, 1200);
+
+    // Kommentarikon och overlay
+    const commentIcon = document.getElementById('comment-icon');
+    const overlay = document.getElementById('overlay');
+    const commentBox = document.querySelector('.comment-box'); // Hämta kommentarsrutan
+
+    commentIcon.addEventListener('click', function() {
+      overlay.style.display = overlay.style.display === 'none' || overlay.style.display === '' ? 'flex' : 'none';
+
+      if (overlay.style.display === 'flex') {
+        commentIcon.classList.remove('fa-comment');
+        commentIcon.classList.add('fa-xmark');
+      } else {
+        commentIcon.classList.remove('fa-xmark');
+        commentIcon.classList.add('fa-comment');
+      }
+    });
+
+    overlay.addEventListener('click', function() {
+      overlay.style.display = 'none';
+      commentIcon.classList.remove('fa-xmark');
+      commentIcon.classList.add('fa-comment');
+    });
+
+    // Stoppa händelsen från att bubbla uppåt när man klickar inuti kommentarsrutan
+    commentBox.addEventListener('click', function(event) {
+      event.stopPropagation(); // Stoppar att eventet bubblar upp till overlayen
+    });
+
+  </script>
+</body>
+</html>
