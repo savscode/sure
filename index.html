@@ -4,7 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>SURE!</title>
+
+  <!-- (Valfritt) Om Unity-bygget hostas på annan origin, preconnecta den: -->
+  <!-- <link rel="preconnect" href="https://cdn-din-domän.example" crossorigin> -->
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
   <style>
 @font-face {
   font-family: "CircularStd";
@@ -42,6 +47,10 @@ html, body {
   justify-content: center;
   align-items: center;
   text-align: center;
+
+  /* Mobilfinesser */
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 .stage {
@@ -70,34 +79,19 @@ html, body {
 }
 
 .meter {
-  /* centrerar innehållet */
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-
-  /* responsiv storlek som inte blir för stor */
+  display: flex; justify-content: center; align-items: baseline;
   font-size: clamp(56px, 22vw, 240px);
   font-family: 'BRLNSDB', sans-serif;
   line-height: 1;
-
-  /* tricket: lite extra utrymme till höger → visuellt mitt */
-  padding-right: 1.4ch;   /* justera vid behov: 0.8–1.4ch */
-  max-width: 100vw;
-  overflow: hidden;
-  margin: 0 auto;
+  padding-right: 1.4ch;
+  max-width: 100vw; overflow: hidden; margin: 0 auto;
 }
-
 .meter span {
-  /* stabil bredd så 9→10→100 inte hoppar */
-  display: inline-block;
-  min-width: 3ch;       /* plats för “100” */
-  text-align: right;    /* lagom glapp mot % */
-  font-weight: bold;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  display: inline-block; min-width: 3ch; text-align: right;
+  font-weight: bold; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
 }
 
-/* valfritt: finjustera på små mobiler */
+/* valfritt: finjustering små mobiler */
 @media (max-width: 600px) {
   .meter { padding-right: 1.2ch; }
 }
@@ -185,7 +179,13 @@ html, body {
 
   <!-- Unity-inbäddning -->
   <div class="unity-wrap" id="unityWrap" aria-hidden="true">
-    <iframe id="unityFrame" class="unity-frame" src="" allow="autoplay; fullscreen; xr-spatial-tracking"></iframe>
+    <iframe
+      id="unityFrame"
+      class="unity-frame"
+      src=""
+      allow="autoplay; fullscreen; xr-spatial-tracking; accelerometer; gyroscope"
+      allowfullscreen
+    ></iframe>
   </div>
 
   <!-- Kommentarikon -->
@@ -212,10 +212,11 @@ html, body {
   </div>
 
   <script>
+    // Peka på Unityns EGEN index.html (i din build-mapp)
     const UNITY_URL = "builds/sure-v1/index.html";
 
-    // Sätt din Web App URL här från Google Apps Script:
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0pmWOdl8ARsFszjuh5DM8VgYRgBTJOzjSIYJLOwb3OuuxxMfgCpITmu2BD2dtZmUxXQ/exec";  // <<<<<< byt denna rad!
+    // Din Google Apps Script Web App URL
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0pmWOdl8ARsFszjuh5DM8VgYRgBTJOzjSIYJLOwb3OuuxxMfgCpITmu2BD2dtZmUxXQ/exec";
 
     const stage = document.getElementById('stage');
     const pctEl = document.getElementById('pct');
@@ -227,6 +228,7 @@ html, body {
     const HOLD_CAP = 99;
     let target = 1, shown = 1, ready = false;
 
+    // Lyssna på progress/ready från Unitys loader-sida
     window.addEventListener('message', (e) => {
       if (e.source !== frame.contentWindow || !e.data) return;
       if (e.data.type === 'unity-progress') {
@@ -235,7 +237,9 @@ html, body {
       }
       if (e.data.type === 'unity-ready') { ready = true; target = 100; }
       if (e.data.type === 'unity-error') {
-        pctEl.textContent = '—'; console.error('Unity error:', e.data.message); clearInterval(ticker);
+        pctEl.textContent = '—';
+        console.error('Unity error:', e.data.message);
+        clearInterval(ticker);
       }
     });
 
@@ -243,11 +247,16 @@ html, body {
       const cap = ready ? 100 : Math.min(HOLD_CAP, target);
       if (shown < cap) { shown += 1; pctEl.textContent = shown; }
       if (ready && shown >= 100) {
-        setTimeout(() => { wrap.classList.add('show'); wrap.setAttribute('aria-hidden', 'false'); stage.classList.add('hide'); }, 300);
+        setTimeout(() => {
+          wrap.classList.add('show');
+          wrap.setAttribute('aria-hidden', 'false');
+          stage.classList.add('hide');
+        }, 300);
         clearInterval(ticker);
       }
     }, TICK_MS);
 
+    // Liten “självdrivande” progress om loadern ännu inte hunnit svara
     setTimeout(() => {
       if (target <= 1) {
         const creep = setInterval(() => {
@@ -258,6 +267,16 @@ html, body {
       }
     }, 1200);
 
+    // Fail-safe: om Unity aldrig postar 'ready' (t.ex. headers fel) – avbryt vänligt
+    setTimeout(() => {
+      if (!ready) {
+        pctEl.textContent = '—';
+        console.error('Unity laddar inte. Kontrollera att servern skickar Content-Encoding för .gz/.br.');
+        clearInterval(ticker);
+      }
+    }, 15000);
+
+    // Kommentar-UI
     const commentIcon = document.getElementById('comment-icon');
     const overlay = document.getElementById('overlay');
     const commentBox = document.querySelector('.comment-box');
@@ -266,55 +285,58 @@ html, body {
     const statusEl = document.getElementById('status');
 
     commentIcon.addEventListener('click', function() {
-      overlay.style.display = overlay.style.display === 'none' || overlay.style.display === '' ? 'flex' : 'none';
-      if (overlay.style.display === 'flex') {
+      const toShow = overlay.style.display === 'none' || overlay.style.display === '' ? 'flex' : 'none';
+      overlay.style.display = toShow;
+      if (toShow === 'flex') {
         commentIcon.classList.remove('fa-comment'); commentIcon.classList.add('fa-xmark');
       } else {
         commentIcon.classList.remove('fa-xmark'); commentIcon.classList.add('fa-comment');
       }
     });
     overlay.addEventListener('click', function() {
-      overlay.style.display = 'none'; commentIcon.classList.remove('fa-xmark'); commentIcon.classList.add('fa-comment');
+      overlay.style.display = 'none';
+      commentIcon.classList.remove('fa-xmark'); commentIcon.classList.add('fa-comment');
     });
     commentBox.addEventListener('click', function(event) { event.stopPropagation(); });
 
     async function submitComment() {
-  const text = (commentInput.value || '').trim();
-  statusEl.textContent = '';
-  if (!text) {
-    statusEl.textContent = 'Skriv något innan du skickar.';
-    return;
-  }
+      const text = (commentInput.value || '').trim();
+      statusEl.textContent = '';
+      if (!text) {
+        statusEl.textContent = 'Skriv något innan du skickar.';
+        return;
+      }
 
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Skickar...';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Skickar...';
 
-  try {
-    const res = await fetch(GAS_ENDPOINT, {
-      method: 'POST',
-      body: JSON.stringify({
-        comment: text,
-        page: location.href,
-        userAgent: navigator.userAgent
-      })
-    });
-    const data = await res.json().catch(() => ({}));
+      try {
+        const res = await fetch(GAS_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, // <-- viktigt!
+          body: JSON.stringify({
+            comment: text,
+            page: location.href,
+            userAgent: navigator.userAgent
+          })
+        });
+        const data = await res.json().catch(() => ({}));
 
-    if (res.ok && data.ok) {
-      statusEl.textContent = 'Tack! Din kommentar är registrerad.';
-      commentInput.value = '';
-    } else {
-      statusEl.textContent = 'Kunde inte spara just nu. Försök igen.';
-      console.error('Save error:', data);
+        if (res.ok && data.ok) {
+          statusEl.textContent = 'Tack! Din kommentar är registrerad.';
+          commentInput.value = '';
+        } else {
+          statusEl.textContent = 'Kunde inte spara just nu. Försök igen.';
+          console.error('Save error:', data);
+        }
+      } catch (err) {
+        statusEl.textContent = 'Nätverksfel. Kontrollera anslutningen.';
+        console.error(err);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Skicka';
+      }
     }
-  } catch (err) {
-    statusEl.textContent = 'Nätverksfel. Kontrollera anslutningen.';
-    console.error(err);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Skicka';
-  }
-}
 
     submitBtn.addEventListener('click', submitComment);
     // Skicka även med Ctrl/Cmd+Enter
