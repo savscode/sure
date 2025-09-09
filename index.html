@@ -215,8 +215,8 @@ html, body {
     // Peka på Unityns EGEN index.html (i din build-mapp)
     const UNITY_URL = "builds/sure-v1/index.html";
 
-    // Din Google Apps Script Web App URL
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby0pmWOdl8ARsFszjuh5DM8VgYRgBTJOzjSIYJLOwb3OuuxxMfgCpITmu2BD2dtZmUxXQ/exec";
+    // Din Google Apps Script Web App URL (måste vara en /exec-deployment, Execute as Me, Who has access: Anyone)
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyyJh71m1xGo4I1pconw2Go5lH_dRkhNu_FEuKhP3B8o9miLVPYfWlqB4Jbluh0MVdzoA/exec";
 
     const stage = document.getElementById('stage');
     const pctEl = document.getElementById('pct');
@@ -311,27 +311,36 @@ html, body {
       submitBtn.textContent = 'Skickar...';
 
       try {
+        // Skicka som "simple request" (ingen preflight/CORS-strul):
+        // URLSearchParams => application/x-www-form-urlencoded
+        const body = new URLSearchParams({
+          comment: text,
+          page: location.href,
+          userAgent: navigator.userAgent
+        });
+
         const res = await fetch(GAS_ENDPOINT, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }, // <-- viktigt!
-          body: JSON.stringify({
-            comment: text,
-            page: location.href,
-            userAgent: navigator.userAgent
-          })
+          body // OBS: ingen egen Content-Type-header — låt webbläsaren sätta
         });
-        const data = await res.json().catch(() => ({}));
 
-        if (res.ok && data.ok) {
-          statusEl.textContent = 'Tack! Din kommentar är registrerad.';
-          commentInput.value = '';
-        } else {
-          statusEl.textContent = 'Kunde inte spara just nu. Försök igen.';
-          console.error('Save error:', data);
+        // Läs som text först, försök sen parsa JSON för bättre felsökning
+        const raw = await res.text();
+        let data = {};
+        try { data = JSON.parse(raw); } catch (_) {}
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} – ${raw || 'ingen body'}`);
         }
+        if (!data.ok) {
+          throw new Error(`Servern svarade ok=false: ${raw}`);
+        }
+
+        statusEl.textContent = 'Tack! Din kommentar är registrerad.';
+        commentInput.value = '';
       } catch (err) {
-        statusEl.textContent = 'Nätverksfel. Kontrollera anslutningen.';
         console.error(err);
+        statusEl.textContent = 'Kunde inte spara just nu (åtkomst/CORS?). Försök igen.';
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Skicka';
